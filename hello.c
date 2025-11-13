@@ -2,6 +2,9 @@
 #include <stdio.h>
 
 int main() {
-    printf("Hello, Linux!\n");
+    char name[50];
+    printf("Hello, What is your name?\n");
+    scanf("%s", name);  
+    printf("Hello, %s!\n", name);
     return 0;
 }
