@@ -5,6 +5,7 @@
         "string_view": "c",
         "*.": "c",
         "array": "c",
-        "initializer_list": "c"
+        "initializer_list": "c",
+        "cstdint": "c"
     }
 }

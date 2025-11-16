@@ -29,6 +29,38 @@
     printf("\n");
     return;
     };
+    int8 *ipv4tostr(const int8* ipaddr) {
+    int8* buf = malloc(16);
+    if (buf) {
+       // 直接读取四个字节，注意：ipaddr 是网络字节序（大端）
+        snprintf(buf, 16, "%u.%u.%u.%u",
+                 (unsigned char)ipaddr[0],
+                 (unsigned char)ipaddr[1],
+                 (unsigned char)ipaddr[2],
+                 (unsigned char)ipaddr[3]);
+    }
+    return buf;
+    };
+ 
+   int8 *strtoipv4(const int8* ipstr) {
+    int8* buf = malloc(4);
+    if (!buf) return 0;
+
+    int8 a, b, c, d;
+    int n = sscanf(ipstr, "%u.%u.%u.%u", &a, &b, &c, &d);
+    if (n != 4 || a > 255 || b > 255 || c > 255 || d > 255) {
+        free(buf);
+        return 0;
+    }
+
+    buf[0] = (int8)a;
+    buf[1] = (int8)b;
+    buf[2] = (int8)c;
+    buf[3] = (int8)d;
+
+    return buf;  
+}
+   
     Icmp *mkicmp(IcmpType kind, const int8 *data, int16 data_len) {
         int16 size;
         Icmp *icmp;
@@ -147,12 +179,23 @@
         return (Ip *)0;
     };
     return pkt; 
-
-
-
-      
+   };
+   void showip(Ip *pkt){
+    if(!pkt) {
+        return;
+    }
+    printf("kind \t 0x%.02hhx\n", pkt->kind);
+    printf("id \t 0x%.02hhx\n", pkt->id);
+    printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
+    printf("IP dst:\t %s\n", ipv4tostr((int8*)&(pkt->dst)));
+   
+    printf("\n");
+    return;     
    };
 
+   int8 *evalip(Ip*, int8*, int16){
+
+   };
     int main(int argc, char *argv[]) {
         int8 *str;
         int8 *raw;
