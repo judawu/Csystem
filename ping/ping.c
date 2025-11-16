@@ -123,11 +123,47 @@
         return ret;
 
     };
+
+
+
+   Ip *mkip(IpType kind,const int8 *src,const int8 *dst, int16 id_,int16 *cntptr){
+    int16 id;
+    Ip *pkt;
+    int16 size;
+    if(!kind || !src || !dst) {
+          return (Ip *)0;
+      };
+    id = (id_) ? id_ : (*cntptr++);
+    size=sizeof(struct s_ip);
+    pkt = (Ip *)malloc((int32) size);
+    assert(pkt);
+    zero((int8 *) pkt, size);
+    pkt->kind = kind;
+    pkt->id = id;
+    copy((int8 *)&(pkt->src), src, sizeof(int32));
+    copy((int8 *)&(pkt->dst), dst, sizeof(int32));
+    if( !pkt->dst) {
+        free(pkt);
+        return (Ip *)0;
+    };
+    return pkt; 
+
+
+
+      
+   };
+
     int main(int argc, char *argv[]) {
         int8 *str;
         int8 *raw;
         Icmp *packet;
         int16 size;
+        int16 rnd;
+
+        srand(getpid());
+        rnd=rand()%65536;
+
+        
 
         str= (int8 *) malloc(6);
         assert(str);

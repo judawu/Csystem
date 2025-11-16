@@ -75,7 +75,7 @@ struct s_ip {
 };
 typedef struct s_ip Ip;
 
-Ip *mkip(IpType, int32, int32, int16);
+Ip *mkip(IpType,const int8*,const int8*, int16,int16*);
 int8 *evalip(Ip*, int8*, int16);
 void showip(Ip*);
 int16 ipchecksum(int8*, int16);
