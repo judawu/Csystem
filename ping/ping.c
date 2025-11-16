@@ -82,7 +82,7 @@
         if(!pkt) {
             return;
         }
-    printf("ICMP identifier:\t(Icmp *)%s\n", identifier);
+    printf("ICMP identifier:(Icmp *)%s = {\n", identifier);
     printf("ICMP kind:\t %s\nsize:\t %d\npayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
@@ -90,7 +90,7 @@
         if(pkt->data && pkt->size) {
             printhex(pkt->data, pkt->size);
         };
-        printf("\n");
+        printf("}\n");
         return;
     };
     int16 checksum(int8 *pkt, int16 size){
@@ -258,15 +258,16 @@
     if(!pkt) {
         return;
     };
-    printf("IP identifier:\t (Ip *)%s\n", identifier);
-    printf("IP kind \t 0x%.02hhx\n", pkt->kind);
-    printf("IP id \t 0x%.02hhx\n", pkt->id);
+    printf("IP identifier:(Ip *)%s = {\n", identifier);
+    printf("IP kind \t %s\n", (pkt->kind == L4icmp) ? "ICMP" : 
+        (pkt->kind == udp) ? "UDP" :(pkt->kind == tcp)? "TCP": "unassigned");
+    printf("IP id \t %d\n", pkt->id);
     printf("IP src:\t %s\n", ipv4tostr((int8*)&pkt->src));
     printf("IP dst:\t %s\n", ipv4tostr((int8*)&pkt->dst));
     if(pkt->payload) {
         show(pkt->payload);
     };
-    printf("\n");
+    printf("}\n");
     return;     
    };
 
