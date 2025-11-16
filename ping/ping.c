@@ -82,7 +82,7 @@
         if(!pkt) {
             return;
         }
-    printf("packet identifier:\t %s\n", identifier);
+    printf("ICMP identifier:\t %s\n", identifier);
     printf("ICMP kind:\t %s\nsize:\t %d\nplayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
@@ -185,8 +185,8 @@
    void showip(int8 *identifier,Ip *pkt){
     if(!pkt) {
         return;
-    }
-    printf("packet identifier:\t %s\n", identifier);
+    };
+    printf("IP identifier:\t %s\n", identifier);
     printf("IP kind \t 0x%.02hhx\n", pkt->kind);
     printf("IP id \t 0x%.02hhx\n", pkt->id);
     printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
@@ -196,9 +196,7 @@
     return;     
    };
 
-   int8 *evalip(Ip*, int8*, int16){
 
-   };
     int main(int argc, char *argv[]) {
         int8 *str;
         int8 *raw;

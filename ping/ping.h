@@ -14,12 +14,8 @@ typedef unsigned long long int int64;
 
 
 #define show(x) _Generic((x), \
-    int8: printf(#x "=%hhd\n", x), \
-    int16: printf(#x "=%hd\n", x), \
-    int32: printf(#x "=%d\n", x), \
-    int64: printf(#x "=%lld\n", x), \
-    Ip* showip(#x "=%hhd\n",x),\
-    Icmp* showip(#x "=%hhd\n",x),\
+    Ip*: showip(#x,(Ip*)x),\
+    Icmp*: showicmp(#x,(Icmp*)x),\
     default: printf("Type of " #x " is not supported.\n") \
 )
 //ICMP
