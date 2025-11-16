@@ -49,6 +49,7 @@ void showicmp(int8*,Icmp*);
 
 //ip
 enum e_iptype {
+    unknown,
     L4icmp,
     udp,
     tcp
@@ -77,13 +78,14 @@ struct s_ip {
     int32 src;
     int32 dst;
     int16 id;
-    Icmp *playload;  
+    Icmp *payload;  
 };
 typedef struct s_ip Ip;
 
-Ip *mkip(IpType,const int8*,const int8*, int16,int16*);
+Ip *mkip(IpType,const int8*,const int8*,int16,int16*);
 int8 *evalip(Ip*);
 void showip(int8*,Ip*);
+
 
 
 //memory functions

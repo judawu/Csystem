@@ -34,10 +34,10 @@
     if (buf) {
        // 直接读取四个字节，注意：ipaddr 是网络字节序（大端）
         snprintf(buf, 16, "%u.%u.%u.%u",
-                 (unsigned char)ipaddr[0],
-                 (unsigned char)ipaddr[1],
-                 (unsigned char)ipaddr[2],
-                 (unsigned char)ipaddr[3]);
+                 (int8)ipaddr[0],
+                 (int8)ipaddr[1],
+                 (int8)ipaddr[2],
+                 (int8)ipaddr[3]);
     }
     return buf;
     };
@@ -83,7 +83,7 @@
             return;
         }
     printf("ICMP identifier:\t(Icmp *)%s\n", identifier);
-    printf("ICMP kind:\t %s\nsize:\t %d\nplayload:\t", 
+    printf("ICMP kind:\t %s\nsize:\t %d\npayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
         pkt->size);
@@ -166,11 +166,11 @@
     if(!kind || !src || !dst) {
           return (Ip *)0;
       };
-    id = (id_) ? id_ : (*cntptr++);
-    size=sizeof(struct s_ip);
+    id = (id_) ? id_ : *cntptr++;
+    size=sizeof(Ip);
     pkt = (Ip *)malloc((int32) size);
     assert(pkt);
-    zero((int8 *) pkt, size);
+    zero((int8 *)pkt, size);
     pkt->kind = kind;
     pkt->id = id;
     copy((int8 *)&(pkt->src), (int8 *)src, 4);
@@ -178,8 +178,9 @@
     if( !pkt->dst) {
         free(pkt);
         return (Ip *)0;
+        
     };
-    pkt->playload = (Icmp *)0;
+    pkt->payload = (Icmp *)0;
     return pkt; 
    };
    int8 *evalip(Ip *pkt){
@@ -212,8 +213,8 @@
     rawpkt.ihl = sizeof(struct s_rawip)/4; 
     rawpkt.id = endian16(pkt->id);
     length_le=0;
-    if(pkt->playload) {
-        length_le=rawpkt.ihl*4+pkt->playload->size + sizeof(struct s_rawicmp);   
+    if(pkt->payload) {
+        length_le=rawpkt.ihl*4+pkt->payload->size + sizeof(struct s_rawicmp);   
    }else{
         length_le=rawpkt.ihl*4;     
     };
@@ -237,10 +238,10 @@
     // 3. 复制头部 + 数据
     copy(rpktptr, (int8 *)&rawpkt, size);
     rpktptr += size;
-    if(pkt->playload) {
-        icmpptr = evalicmp(pkt->playload);
+    if(pkt->payload) {
+        icmpptr = evalicmp(pkt->payload);
         if(icmpptr) {
-            copy(rpktptr, icmpptr, pkt->playload->size);
+            copy(rpktptr, icmpptr, pkt->payload->size);
             free(icmpptr);
         };    
     };
@@ -260,10 +261,10 @@
     printf("IP identifier:\t (Ip *)%s\n", identifier);
     printf("IP kind \t 0x%.02hhx\n", pkt->kind);
     printf("IP id \t 0x%.02hhx\n", pkt->id);
-    printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
-    printf("IP dst:\t %s\n", ipv4tostr((int8*)&(pkt->dst)));
-    if(pkt->playload) {
-        show(pkt->playload);
+    printf("IP src:\t %s\n", ipv4tostr((int8*)&pkt->src));
+    printf("IP dst:\t %s\n", ipv4tostr((int8*)&pkt->dst));
+    if(pkt->payload) {
+        show(pkt->payload);
     };
     printf("\n");
     return;     
@@ -273,9 +274,11 @@
     int main(int argc, char *argv[]) {
         int8 *str;
         int8 *raw;
-        Icmp *packet;
+        Icmp *icmp_packet;
+        Ip  *ip_packet;
         int16 size;
         int16 rnd;
+        int8 *srcip,*dstip;
         (void) rnd;
         srand(getpid());
         rnd=rand()%65536;
@@ -289,17 +292,25 @@
         printf("Created ICMP packet for %s:",str);
         printhex(str, (int16)5);
       
-        packet = mkicmp(echo, str, (int16)5);
-        assert(packet);
-        show(packet);
-        raw = evalicmp(packet);
+        icmp_packet = mkicmp(echo, str, (int16)5);
+        assert(icmp_packet);
+      
+        raw = evalicmp(icmp_packet);
         assert(raw);
-        size=sizeof(struct s_rawicmp) + packet->size;
+        srcip="192.168.0.1";
+        dstip="1.2.4.3";
+        ip_packet=mkip(L4icmp,strtoipv4(srcip),strtoipv4(dstip),0,&rnd);
+        assert(ip_packet);
+        ip_packet->payload=icmp_packet;
+        
         printf("Created ICMP raw data:\n");
-        printhex(raw, size);
-
-        free(packet->data);
-        free(packet);
+        raw=evalip(ip_packet);
+        size= sizeof(struct s_rawip)+sizeof(struct s_rawicmp)+ip_packet->payload->size;
+        show(ip_packet);
+        printhex(raw,size);
+        free(icmp_packet->data);
+        free(icmp_packet);
+        free(ip_packet);
 
 
         return 0;
