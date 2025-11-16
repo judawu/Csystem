@@ -78,10 +78,11 @@
         return icmp;
     };
 
-    void showicmp(Icmp *pkt) {
+    void showicmp(int8 *identifier,Icmp *pkt) {
         if(!pkt) {
             return;
         }
+    printf("packet identifier:\t %s\n", identifier);
     printf("ICMP kind:\t %s\nsize:\t %d\nplayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
@@ -180,12 +181,14 @@
     };
     return pkt; 
    };
-   void showip(Ip *pkt){
+   
+   void showip(int8 *identifier,Ip *pkt){
     if(!pkt) {
         return;
     }
-    printf("kind \t 0x%.02hhx\n", pkt->kind);
-    printf("id \t 0x%.02hhx\n", pkt->id);
+    printf("packet identifier:\t %s\n", identifier);
+    printf("IP kind \t 0x%.02hhx\n", pkt->kind);
+    printf("IP id \t 0x%.02hhx\n", pkt->id);
     printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
     printf("IP dst:\t %s\n", ipv4tostr((int8*)&(pkt->dst)));
    
@@ -202,7 +205,7 @@
         Icmp *packet;
         int16 size;
         int16 rnd;
-
+        (void) rnd;
         srand(getpid());
         rnd=rand()%65536;
 
@@ -212,7 +215,6 @@
         assert(str);
         zero(str,(int16) 6);
         copy(str, (int8 *)"hello", 5);
-        //
         printf("Created ICMP packet for %s:",str);
         printhex(str, (int16)5);
       

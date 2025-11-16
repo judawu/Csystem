@@ -11,6 +11,16 @@ typedef unsigned int int32;
 typedef unsigned long long int int64;
 
 
+
+#define show(x) _Generic((x), \
+    int8: printf(#x "=%hhd\n", x), \
+    int16: printf(#x "=%hd\n", x), \
+    int32: printf(#x "=%d\n", x), \
+    int64: printf(#x "=%lld\n", x), \
+    Ip* showip(int8* #x,(Ip*)x),\
+    Icmp* showip(int8* #x,(Icmp*)x),\
+    default: printf("Type of " #x " is not supported.\n") \
+)
 //ICMP
 enum e_icmptype {
     unassigned,
@@ -38,7 +48,7 @@ typedef struct s_icmp Icmp;
 //icmp functions
 Icmp *mkicmp(IcmpType,const int8*, int16);
 int8 *evalicmp(Icmp*);
-void showicmp(Icmp*);
+void showicmp(int8*,Icmp*);
 int16 icmpchecksum(int8*, int16);
 
 //ip
@@ -77,7 +87,7 @@ typedef struct s_ip Ip;
 
 Ip *mkip(IpType,const int8*,const int8*, int16,int16*);
 int8 *evalip(Ip*, int8*, int16);
-void showip(Ip*);
+void showip(int8*,Ip*);
 int16 ipchecksum(int8*, int16);
 
 //memory functions
