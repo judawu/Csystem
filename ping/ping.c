@@ -82,7 +82,7 @@
         if(!pkt) {
             return;
         }
-    printf("ICMP identifier:\t %s\n", identifier);
+    printf("ICMP identifier:\t(Icmp *)%s\n", identifier);
     printf("ICMP kind:\t %s\nsize:\t %d\nplayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
@@ -186,7 +186,7 @@
     if(!pkt) {
         return;
     };
-    printf("IP identifier:\t %s\n", identifier);
+    printf("IP identifier:\t (Ip *)%s\n", identifier);
     printf("IP kind \t 0x%.02hhx\n", pkt->kind);
     printf("IP id \t 0x%.02hhx\n", pkt->id);
     printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
