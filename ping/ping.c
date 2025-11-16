@@ -179,9 +179,80 @@
         free(pkt);
         return (Ip *)0;
     };
+    pkt->playload = (Icmp *)0;
     return pkt; 
    };
+   int8 *evalip(Ip *pkt){
+     int8 *rpktptr,*ret;
+     struct s_rawip rawpkt;
+     struct s_rawip *rawpktptr;
+     int16 checksum;
+     int16 size;
+     int8 protocol;
+     int16 length_le,length_be;
+     int8 *icmpptr;
+
+     if(!pkt) {
+        return (int8 *)0;
+     };
+    protocol=0;
+    switch(pkt->kind) {
+        case L4icmp:
+            protocol = 1; 
+            break;
+        default:
+            return (int8 *)0; 
+    };
+    rawpkt.checksum = 0;
+    rawpkt.dscp = 0;
+    rawpkt.dst= pkt->dst;
+    rawpkt.ecn = 0;
+    rawpkt.flags = 0; 
+    rawpkt.version = 4; 
+    rawpkt.ihl = sizeof(struct s_rawip)/4; 
+    rawpkt.id = endian16(pkt->id);
+    length_le=0;
+    if(pkt->playload) {
+        length_le=rawpkt.ihl*4+pkt->playload->size + sizeof(struct s_rawicmp);   
+   }else{
+        length_le=rawpkt.ihl*4;     
+    };
+    length_be = endian16(length_le);
+    rawpkt.length = length_le;   
+    rawpkt.offset = 0;
+    rawpkt.options[0]=0;
+    rawpkt.protocol = protocol;
+    rawpkt.src = pkt->src;
+    rawpkt.ttl = 250;
+
+    // 2. 分配内存
+    if (length_le%2) {
+        length_le++; 
+    };
+  
+    rpktptr = (int8 *)malloc((int32) length_le);
+    ret=rpktptr;
+    assert(rpktptr);   
+    zero(rpktptr, length_le);
+    // 3. 复制头部 + 数据
+    copy(rpktptr, (int8 *)&rawpkt, length_le);
+    rpktptr += length_le;
+    if(pkt->playload) {
+        icmpptr = evalicmp(pkt->playload);
+        if(icmpptr) {
+            copy(rpktptr, icmpptr, sizeof(struct s_rawicmp) + pkt->playload->size);
+            free(icmpptr);
+        };    
+    };
+    // 4. 计算校验和（仅头部）
+    checksum=ipchecksum(ret, rawpkt.ihl);
+    rawpktptr = (struct s_rawip *)ret;
+    // 5. 回填校验和
+    rawpktptr->checksum = checksum;
+    return ret;
+
    
+   };
    void showip(int8 *identifier,Ip *pkt){
     if(!pkt) {
         return;
@@ -191,7 +262,9 @@
     printf("IP id \t 0x%.02hhx\n", pkt->id);
     printf("IP src:\t %s\n", ipv4tostr((int8*)&(pkt->src)));
     printf("IP dst:\t %s\n", ipv4tostr((int8*)&(pkt->dst)));
-   
+    if(pkt->playload) {
+        show(pkt->playload);
+    };
     printf("\n");
     return;     
    };

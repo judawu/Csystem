@@ -13,10 +13,10 @@ typedef unsigned long long int int64;
 
 
 
-#define show(x) _Generic((x), \
+#define show(x) _Generic((x),\
     Ip*: showip(#x,(Ip*)x),\
     Icmp*: showicmp(#x,(Icmp*)x),\
-    default: printf("Type of " #x " is not supported.\n") \
+    default: printf("Type of " #x " is not supported.\n")\
 )
 //ICMP
 enum e_icmptype {
@@ -50,7 +50,7 @@ int16 icmpchecksum(int8*, int16);
 
 //ip
 enum e_iptype {
-    icmp,
+    L4icmp,
     udp,
     tcp
 } packed;
@@ -74,15 +74,16 @@ struct s_rawip {
 } packed;
 
 struct s_ip {
+    IpType kind:3;
     int32 src;
     int32 dst;
     int16 id;
-    IpType kind:3;
+    Icmp *playload;  
 };
 typedef struct s_ip Ip;
 
 Ip *mkip(IpType,const int8*,const int8*, int16,int16*);
-int8 *evalip(Ip*, int8*, int16);
+int8 *evalip(Ip*);
 void showip(int8*,Ip*);
 int16 ipchecksum(int8*, int16);
 
