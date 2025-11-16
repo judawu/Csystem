@@ -46,7 +46,7 @@
     int8* buf = malloc(4);
     if (!buf) return 0;
 
-    int8 a, b, c, d;
+    int32 a, b, c, d;
     int n = sscanf(ipstr, "%u.%u.%u.%u", &a, &b, &c, &d);
     if (n != 4 || a > 255 || b > 255 || c > 255 || d > 255) {
         free(buf);
@@ -173,8 +173,8 @@
     zero((int8 *) pkt, size);
     pkt->kind = kind;
     pkt->id = id;
-    copy((int8 *)&(pkt->src), src, sizeof(int32));
-    copy((int8 *)&(pkt->dst), dst, sizeof(int32));
+    copy((int8 *)&(pkt->src), (int8 *)src, 4);
+    copy((int8 *)&(pkt->dst), (int8 *)dst, 4);   
     if( !pkt->dst) {
         free(pkt);
         return (Ip *)0;
@@ -220,7 +220,7 @@
       
         packet = mkicmp(echo, str, (int16)5);
         assert(packet);
-        showicmp(packet);
+        show(packet);
         raw = evalicmp(packet);
         assert(raw);
         size=sizeof(struct s_rawicmp) + packet->size;

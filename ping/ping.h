@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
 
 
 #define packed __attribute__((__packed__))
@@ -17,8 +18,8 @@ typedef unsigned long long int int64;
     int16: printf(#x "=%hd\n", x), \
     int32: printf(#x "=%d\n", x), \
     int64: printf(#x "=%lld\n", x), \
-    Ip* showip(int8* #x,(Ip*)x),\
-    Icmp* showip(int8* #x,(Icmp*)x),\
+    Ip* showip(#x "=%hhd\n",x),\
+    Icmp* showip(#x "=%hhd\n",x),\
     default: printf("Type of " #x " is not supported.\n") \
 )
 //ICMP
@@ -53,7 +54,6 @@ int16 icmpchecksum(int8*, int16);
 
 //ip
 enum e_iptype {
-    unassigned,
     icmp,
     udp,
     tcp
