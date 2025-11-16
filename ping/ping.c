@@ -93,7 +93,7 @@
         printf("\n");
         return;
     };
-    int16 icmpchecksum(int8 *pkt, int16 size){
+    int16 checksum(int8 *pkt, int16 size){
     int32 sum = 0;
     int16 i,ret;
     int16 *ptr = (int16 *)pkt;
@@ -115,7 +115,7 @@
     int8 *evalicmp(Icmp* pkt) {
         int8 *rpktptr,*ret;
         int16 size;
-        int16 checksum;
+        int16 check;
         struct s_rawicmp rawpkt;
         struct s_rawicmp *rawpktptr;
         if(!pkt || !pkt->data || !pkt->size) {
@@ -149,10 +149,10 @@
         rpktptr += sizeof(struct s_rawicmp);
         copy(rpktptr, pkt->data, pkt->size);
         // 4. 计算校验和（包含整个包）
-        checksum=icmpchecksum(ret,size);
+        check=checksum(ret,size);
         rawpktptr = (struct s_rawicmp *)ret;
         // 5. 回填校验和
-        rawpktptr->checksum = checksum;
+        rawpktptr->checksum = check;
         return ret;
 
     };
@@ -186,11 +186,11 @@
      int8 *rpktptr,*ret;
      struct s_rawip rawpkt;
      struct s_rawip *rawpktptr;
-     int16 checksum;
-     int16 size;
+     int16 check;
      int8 protocol;
      int16 length_le,length_be;
      int8 *icmpptr;
+     int16 size;
 
      if(!pkt) {
         return (int8 *)0;
@@ -218,7 +218,7 @@
         length_le=rawpkt.ihl*4;     
     };
     length_be = endian16(length_le);
-    rawpkt.length = length_le;   
+    rawpkt.length = length_be;   
     rawpkt.offset = 0;
     rawpkt.options[0]=0;
     rawpkt.protocol = protocol;
@@ -229,26 +229,26 @@
     if (length_le%2) {
         length_le++; 
     };
-  
+    size=sizeof(struct s_rawip);
     rpktptr = (int8 *)malloc((int32) length_le);
     ret=rpktptr;
     assert(rpktptr);   
     zero(rpktptr, length_le);
     // 3. 复制头部 + 数据
-    copy(rpktptr, (int8 *)&rawpkt, length_le);
-    rpktptr += length_le;
+    copy(rpktptr, (int8 *)&rawpkt, size);
+    rpktptr += size;
     if(pkt->playload) {
         icmpptr = evalicmp(pkt->playload);
         if(icmpptr) {
-            copy(rpktptr, icmpptr, sizeof(struct s_rawicmp) + pkt->playload->size);
+            copy(rpktptr, icmpptr, pkt->playload->size);
             free(icmpptr);
         };    
     };
     // 4. 计算校验和（仅头部）
-    checksum=ipchecksum(ret, rawpkt.ihl);
+    check=checksum(ret, length_le);
     rawpktptr = (struct s_rawip *)ret;
     // 5. 回填校验和
-    rawpktptr->checksum = checksum;
+    rawpktptr->checksum = check;
     return ret;
 
    

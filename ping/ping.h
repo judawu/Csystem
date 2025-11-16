@@ -46,7 +46,6 @@ typedef struct s_icmp Icmp;
 Icmp *mkicmp(IcmpType,const int8*, int16);
 int8 *evalicmp(Icmp*);
 void showicmp(int8*,Icmp*);
-int16 icmpchecksum(int8*, int16);
 
 //ip
 enum e_iptype {
@@ -85,12 +84,12 @@ typedef struct s_ip Ip;
 Ip *mkip(IpType,const int8*,const int8*, int16,int16*);
 int8 *evalip(Ip*);
 void showip(int8*,Ip*);
-int16 ipchecksum(int8*, int16);
+
 
 //memory functions
 void zero(int8*, int16);
 void copy(int8*, int8*, int16);
-
+int16 checksum(int8*, int16);
 //comman functions
 int16 endian16(int16);
 //print functions
