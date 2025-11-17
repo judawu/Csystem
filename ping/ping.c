@@ -270,9 +270,51 @@
     printf("}\n");
     return;     
    };
+   /* ssize_t sendto(int sockfd, const void buf[.len], size_t len, int flags,
+                      const struct sockaddr *dest_addr, socklen_t addrlen); */
+ int8 sendip(int32 s,Ip *pkt){
+    int8 *raw;
+    int16 size;
+    signed int ret;
+    struct sockaddr_in  sock;
+
+    if (!s || !pkt)
+          return 0;
+    zero((int8*)&sock,sizeof(sock));
+    raw=eval(pkt);
+    size=sizeof(struct s_rawip)+sizeof(struct s_rawicmp)+pkt->payload->size;
+    sock.sin_addr.s_addr=(in_addr_t)pkt->dst;
+    ret=sendto((int)s,raw,(int)size,MSG_DONTWAIT,(const struct sockaddr *)&sock,sizeof(sock));
+    if(ret<0)
+     return 0;
+    else
+     return 1;
+ };
+ 
+ 
+ 
+   int32 setup(){
+    int32 s,one;
+    signed int tmp;
+    one=(int32)1;
+    tmp =socket(AF_INET,SOCK_RAW,1);//IPPROTO_RAW using sudo ./ping
+    if(tmp>2){
+        s=(int32)tmp;
+    }
+    else{
+        s=(int32)0;
+    };
+    // tmp=setsockopt((int)s,SOL_IP,IP_HDRINCL,
+    // (int *)&one,sizeof(int32));
+    // print("%d\n",tmp);
+    // if(tmp)
+    //  return (int32)0;
+    return s;
+ };
 
 
-    int main(int argc, char *argv[]) {
+
+    int main1(int argc, char *argv[]) {
         int8 *str;
         int8 *raw;
         Icmp *icmp_packet;
@@ -280,10 +322,11 @@
         int16 size;
         int16 rnd;
         int8 *srcip,*dstip;
+        int8 ret;
+        int32 s;
         (void) rnd;
         srand(getpid());
         rnd=rand()%65536;
-
         
 
         str= (int8 *) malloc(6);
@@ -309,6 +352,17 @@
         size= sizeof(struct s_rawip)+sizeof(struct s_rawicmp)+ip_packet->payload->size;
         show(ip_packet);
         printhex(raw,size);
+
+        s=setup();
+        if(!s){
+            printf("error\n");
+            return -1;
+        }
+        else{
+             printf("s=%d\n",(int)s);
+        };
+        ret=sendip(s,ip_packet);
+        printf("ret=%d=%s\n",ret,(ret)?"true":"false");
         free(icmp_packet->data);
         free(icmp_packet);
         free(ip_packet);
@@ -316,3 +370,20 @@
 
         return 0;
     }
+
+    int main2(int argc,char *argv[]){
+       int32 s;
+       s=setup();
+       if(s)
+         printf("s=%d\n",(int)s);
+       else
+         printf("err\n");
+       close(s);
+       return 0;
+    }
+
+    int main(int argc,char *argv[]){
+    
+       return main1(argc,argv);
+    }
+    //sudo strace -f ./ping 2>&1 | grep sendto

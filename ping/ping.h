@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
-
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #define packed __attribute__((__packed__))
 typedef unsigned char int8;
@@ -14,9 +15,15 @@ typedef unsigned long long int int64;
 
 
 #define show(x) _Generic((x),\
-    Ip*: showip(#x,(Ip*)x),\
-    Icmp*: showicmp(#x,(Icmp*)x),\
+    Ip*: showip(#x,(Ip*)(x)),\
+    Icmp*: showicmp(#x,(Icmp*)(x)),\
     default: printf("Type of " #x " is not supported.\n")\
+)
+
+#define eval(x) _Generic((x),\
+    Ip*: evalip((Ip*)(x)),\
+    Icmp*: evalicmp((Icmp*)(x)),\
+    default: printf("eval of " #x " is not supported.\n")\
 )
 //ICMP
 enum e_icmptype {
@@ -96,4 +103,10 @@ int16 checksum(int8*, int16);
 int16 endian16(int16);
 //print functions
 void printhex(int8*, int16);
+
+int8 sendip(int32,Ip*);
+
+int32 setup();
+int main1(int,char**);
+int main2(int,char**);
 int main(int,char**);
