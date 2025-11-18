@@ -92,6 +92,15 @@ typedef struct s_ip Ip;
 Ip *mkip(IpType,const int8*,const int8*,int16,int16*);
 int8 *evalip(Ip*);
 void showip(int8*,Ip*);
+int8 sendip(int32,Ip*);
+
+
+//ping 
+struct s_ping {
+    int16 id;
+    int16 seq;
+    int8 data[];
+} packed;
 
 
 
@@ -104,8 +113,8 @@ int16 endian16(int16);
 //print functions
 void printhex(int8*, int16);
 
-int8 sendip(int32,Ip*);
 
+// socket
 int32 setup();
 int main1(int,char**);
 int main2(int,char**);

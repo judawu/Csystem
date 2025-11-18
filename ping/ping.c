@@ -110,7 +110,7 @@
     // 取反
     ret = (int16) (~sum);  
     //checksum 使用网络字节序   
-    return htons(ret); 
+    return ret; 
 };
     int8 *evalicmp(Icmp* pkt) {
         int8 *rpktptr,*ret;
@@ -318,7 +318,7 @@
 
 
     int main1(int argc, char *argv[]) {
-        int8 *str;
+        struct s_ping *str;
         int8 *raw;
         Icmp *icmp_packet;
         Ip  *ip_packet;
@@ -327,24 +327,28 @@
         int8 *srcip,*dstip;
         int8 ret;
         int32 s;
+       
         (void) rnd;
         srand(getpid());
         rnd=rand()%65536;
         
-
-        str= (int8 *) malloc(6);
+        size=sizeof(struct s_ping)+4;
+        str= (struct s_ping *) malloc(size);
         assert(str);
-        zero(str,(int16) 6);
-        copy(str, (int8 *)"hello", 5);
-        printf("Created ICMP packet for %s:",str);
-        printhex(str, (int16)5);
+        zero((int8 *)str,size);
+        str->id= endian16(1234);
+        str->seq=endian16(1);
+
+        copy(str->data, (int8 *)"hello",5);
+        printf("Created ICMP packet for %s:",str->data);
+        printhex((int8 *)str, size);
       
-        icmp_packet = mkicmp(echo, str, (int16)5);
+        icmp_packet = mkicmp(echo,(int8 *)str, size);
         assert(icmp_packet);
       
         raw = evalicmp(icmp_packet);
         assert(raw);
-        srcip="10.0.3.238";
+        srcip="10.0.4.128";
         dstip="10.1.2.6";
         ip_packet=mkip(L4icmp,strtoipv4(srcip),strtoipv4(dstip),0,&rnd);
         assert(ip_packet);
