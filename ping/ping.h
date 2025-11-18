@@ -93,7 +93,7 @@ Ip *mkip(IpType,const int8*,const int8*,int16,int16*);
 int8 *evalip(Ip*);
 void showip(int8*,Ip*);
 int8 sendip(int32,Ip*);
-
+Ip *recvip(int32);
 
 //ping 
 struct s_ping {
