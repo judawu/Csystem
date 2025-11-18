@@ -83,7 +83,7 @@
             return;
         }
     printf("ICMP identifier:(Icmp *)%s = {\n", identifier);
-    printf("ICMP kind:\t %s\nsize:\t %d\npayload:\t", 
+    printf("ICMP kind:\t %s\nsize:\t %d bytes\npayload:\t", 
         (pkt->kind == echo) ? "echo" : 
         (pkt->kind == echoreply) ? "echoreply" : "unassigned",
         pkt->size);
@@ -110,7 +110,7 @@
     // 取反
     ret = (int16) (~sum);  
     //checksum 使用网络字节序   
-    return endian16(ret);  
+    return htons(ret); 
 };
     int8 *evalicmp(Icmp* pkt) {
         int8 *rpktptr,*ret;
@@ -139,7 +139,7 @@
         size=sizeof(struct s_rawicmp) + pkt->size;
         if(size%2){
             size++;
-        };
+        }; // ← FIX：偶数字节对齐
         rpktptr = (int8 *)malloc((int32) size);
         ret=rpktptr;
         assert(rpktptr);   
@@ -211,15 +211,18 @@
     rawpkt.flags = 0; 
     rawpkt.version = 4; 
     rawpkt.ihl = sizeof(struct s_rawip)/4; 
+ 
     rawpkt.id = endian16(pkt->id);
     length_le=0;
     if(pkt->payload) {
         length_le=rawpkt.ihl*4+pkt->payload->size + sizeof(struct s_rawicmp);   
+        length_be = endian16(length_le);
+        rawpkt.length = length_be; 
    }else{
-        length_le=rawpkt.ihl*4;     
+        length_le=rawpkt.ihl*4;  
+        rawpkt.length = length_le;    
     };
-    length_be = endian16(length_le);
-    rawpkt.length = length_be;   
+      
     rawpkt.offset = 0;
     rawpkt.options[0]=0;
     rawpkt.protocol = protocol;
@@ -241,7 +244,7 @@
     if(pkt->payload) {
         icmpptr = evalicmp(pkt->payload);
         if(icmpptr) {
-            copy(rpktptr, icmpptr, pkt->payload->size);
+            copy(rpktptr, icmpptr, sizeof(struct s_rawicmp)+pkt->payload->size);
             free(icmpptr);
         };    
     };
@@ -297,18 +300,18 @@
     int32 s,one;
     signed int tmp;
     one=(int32)1;
-    tmp =socket(AF_INET,SOCK_RAW,1);//IPPROTO_RAW using sudo ./ping
+    tmp =socket(AF_INET,SOCK_RAW,IPPROTO_ICMP);//IPPROTO_ICMP=1 using sudo ./ping
     if(tmp>2){
         s=(int32)tmp;
     }
     else{
         s=(int32)0;
     };
-    // tmp=setsockopt((int)s,SOL_IP,IP_HDRINCL,
-    // (int *)&one,sizeof(int32));
-    // print("%d\n",tmp);
-    // if(tmp)
-    //  return (int32)0;
+    tmp=setsockopt((int)s,IPPROTO_IP,IP_HDRINCL,
+    (int *)&one,sizeof(int32));
+  
+    if(tmp)
+     return (int32)0;
     return s;
  };
 
@@ -341,8 +344,8 @@
       
         raw = evalicmp(icmp_packet);
         assert(raw);
-        srcip="192.168.0.1";
-        dstip="1.2.4.3";
+        srcip="10.0.3.238";
+        dstip="10.1.2.6";
         ip_packet=mkip(L4icmp,strtoipv4(srcip),strtoipv4(dstip),0,&rnd);
         assert(ip_packet);
         ip_packet->payload=icmp_packet;
@@ -359,10 +362,11 @@
             return -1;
         }
         else{
-             printf("s=%d\n",(int)s);
+             printf("socket create s=%d\n",(int)s);
         };
         ret=sendip(s,ip_packet);
-        printf("ret=%d=%s\n",ret,(ret)?"true":"false");
+        printf("sendip return=%d=%s\n",ret,(ret)?"true":"false");
+        close(s);
         free(icmp_packet->data);
         free(icmp_packet);
         free(ip_packet);
@@ -387,3 +391,5 @@
        return main1(argc,argv);
     }
     //sudo strace -f ./ping 2>&1 | grep sendto
+    // sudo tcpdump -i any -n icmp and src host 10.0.3.238 -vv
+    //sudo tcpdump icmp and src 10.0.3.238
