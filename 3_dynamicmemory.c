@@ -1,4 +1,4 @@
-/*daynamic1.c */
+/*dynamicmemory.c */
 #include <stdio.h>
 #include <stdlib.h>
 
