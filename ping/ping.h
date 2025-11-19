@@ -102,6 +102,8 @@ struct s_ping {
     int8 data[];
 } packed;
 
+int8 sendping(int8*,int8*,int16,int16,int8*,int16);
+     
 
 
 //memory functions
@@ -116,6 +118,6 @@ void printhex(int8*, int16);
 
 // socket
 int32 setup();
-int main1(int,char**);
-int main2(int,char**);
+int test1();
+int test2();
 int main(int,char**);

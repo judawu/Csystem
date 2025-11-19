@@ -79,6 +79,7 @@
     };
 
     void showicmp(int8 *identifier,Icmp *pkt) {
+        struct s_ping *pingptr;
         if(!pkt) {
             return;
         }
@@ -89,7 +90,13 @@
         pkt->size);
         if(pkt->data && pkt->size) {
             printhex(pkt->data, pkt->size);
+            if((pkt->kind==echo) || (pkt->kind==echoreply)){
+                pingptr=(struct s_ping *)pkt->data;
+                printf("ICMP id:\t%d\nICMP seq:\t%d\n",
+                endian16(pingptr->id),endian16(pingptr->seq));
+            };
         };
+
         printf("}\n");
         return;
     };
@@ -258,10 +265,21 @@
    
    };
    void showip(int8 *identifier,Ip *pkt){
+    int16 size;
     if(!pkt) {
         return;
     };
+    if(pkt->payload){
+        size=sizeof(struct s_rawip)+pkt->payload->size;
+    }
+    else{
+         size=sizeof(struct s_rawip);
+        };
+       
+    
+
     printf("IP identifier:(Ip *)%s = {\n", identifier);
+    printf("IP size:\t %d bytes\n", size);
     printf("IP kind \t %s\n", (pkt->kind == L4icmp) ? "ICMP" : 
         (pkt->kind == udp) ? "UDP" :(pkt->kind == tcp)? "TCP": "unassigned");
     printf("IP id \t %d\n", pkt->id);
@@ -294,7 +312,7 @@
      return 1;
  };
  Ip *recvip(int32 s){
-    int8 buf[2000];
+    int8 buf[1600];
     Ip *ippkt;
     Icmp *icmppkt;
     struct s_rawip *raw;
@@ -304,62 +322,79 @@
     int8 *src,*dst;
     int16 id;
     IpType kind;
-    int16 check;
+    int16 ipcheck,icmpcheck;
     IcmpType icmpkind;
-    int16 icmpsize;
+    
     struct s_ping *pingpkt;
     int8 *data;
-
-
-
 
     if(!s)
       return (Ip*)0;
     
-    zero((int8*)&buf,2000);
+    zero((int8*)&buf,1600);
  /*ssize_t recvfrom(int sockfd, void buf[restrict .len], size_t len,
                         int flags,
                         struct sockaddr *_Nullable restrict src_addr,
                         socklen_t *_Nullable restrict addrlen);*/
-    ret=recvfrom((int)s,&buf,1999,0,0,0);
+    ret=recvfrom((int)s,&buf,1599,0,0,0);
     if(ret<0)
      return (Ip*)0;
-
+   
     size=(int16)ret;
+    
     if(size%2)
        size++;
     raw=(struct s_rawip *)&buf;
     id=endian16(raw->id);
-    src=ipv4tostr((int8*)&raw->src);
-    dst=ipv4tostr((int8*)&raw->dst);
-    check=checksum(buf,size);
+    if(id == 0) id = 1;   // 或者随便一个非0值，或者用随机数
+    src=(int8*)&raw->src;
+    dst=(int8*)&raw->dst;
+   
+    ipcheck=checksum(buf,size);
     
-    if(check !=0xffff)
+   
+    if(ipcheck)
       {
         fprintf(stderr,"recevied packet with malformed checksum: 0x%.04hx\n",(int)raw->checksum);
         return (Ip*)0;
       };
+ 
     kind=(raw->protocol==1)?L4icmp:unknown;
     if (kind!=L4icmp){
         fprintf(stderr,"unsupported packet type received:0x%.04hx\n",(int)raw->protocol);
          return (Ip*)0;
     };
+  
     ippkt=mkip(kind,src,dst,id,0);
+    
     size-=sizeof(struct s_rawip);
+    
     if (!size){
      ippkt->payload=(Icmp *)0;
      return ippkt;
     }
+   
+    rawicmp=(struct s_rawicmp *)(buf+sizeof(struct s_rawip));
+    
+    if((rawicmp->type==8)&&(rawicmp->code==0)){
+        
+        icmpkind=echo;}
+    else if((rawicmp->type==0)&&(rawicmp->code==0))
+        icmpkind=echoreply;
+    else{
+        icmpkind=unassigned;
+        fprintf(stderr,"Unknow icmp packet received: %d/%d\n",rawicmp->type,rawicmp->code);
+        return (Ip*)0;
+    };
+    
+        icmpcheck=checksum((int8*)rawicmp,size);
+        if(icmpcheck)
+        {
+            fprintf(stderr,"icmp checksum failed : 0x%.04hx\n",(int)rawicmp->checksum);
 
-     rawicmp=(struct s_rawicmp *)(&buf+sizeof(struct s_rawip));
-        if((rawicmp->type==8)&&(rawicmp->code==0))
-           icmpkind=echo;
-        else if((rawicmp->type==0)&&(rawicmp->code==0))
-            icmpkind=echoreply;
-        else
-            icmpkind=unassigned;
-            fprintf(stderr,"Unknow icmp packet received: %d/%d\n",(int)rawicmp->type,(int)rawicmp->code);
             return (Ip*)0;
+        }
+  
         size -=sizeof(struct s_rawicmp);
         if(!size)
           pingpkt=(struct s_ping *)0;
@@ -398,9 +433,53 @@
     return s;
  };
 
+int8 sendping(int8 *src,int8 *dst,int16 id,int16 seq,int8 *msg,int16 msg_len){
+        struct s_ping *pingptr;
+        int8 *raw;
+        Icmp *icmpptr;
+        Ip  *sendIPptr, *replyIPptr;
+        int16 size;
+        int32 s; 
+        size=sizeof(struct s_ping)+msg_len-1;
+        pingptr= (struct s_ping *) malloc(size);
+        assert(pingptr);
+        zero((int8 *)pingptr,size);
+        pingptr->id= endian16(id);
+        pingptr->seq=endian16(seq);
+        copy(pingptr->data, msg, msg_len);    
+        icmpptr = mkicmp(echo,(int8 *)pingptr, size);
+        assert(icmpptr);   
+        sendIPptr=mkip(L4icmp,strtoipv4(src),strtoipv4(dst),id,0);
+        assert(sendIPptr);
+        sendIPptr->payload=icmpptr;
+        show(sendIPptr);
+        s=setup();
+        if(!s){
+            fprintf(stderr,"socket create error\n");
+            return 0;
+        };
+         if(!sendip(s,sendIPptr)){
+            fprintf(stderr,"send ip packet function  sendip() returne error\n");
+            return 0;
+        };
+        free(icmpptr->data);
+        free(icmpptr);
+        free(sendIPptr);
+        replyIPptr=recvip(s);   
+        if(!replyIPptr){
+          fprintf(stderr,"receive ip packet function recvip() returned error");
+          return 0;
+        };
+        show(replyIPptr);
+        free(replyIPptr);
+        if(replyIPptr->payload->data)
+           free(replyIPptr->payload->data);
+        if(replyIPptr->payload)
+           free(replyIPptr->payload);
+        return 1;
+};
 
-
-    int main1(int argc, char *argv[]) {
+    int test1() {
         struct s_ping *str;
         int8 *raw;
         Icmp *icmp_packet;
@@ -414,35 +493,43 @@
         (void) rnd;
         srand(getpid());
         rnd=rand()%65536;
-        
+        printf("A ping simulator c programing project :\n\n\n");
+    
         size=sizeof(struct s_ping)+4;
         str= (struct s_ping *) malloc(size);
         assert(str);
         zero((int8 *)str,size);
+        printf("Created Ping structure id=1234,seq=1,data=hello.\n");
         str->id= endian16(1234);
         str->seq=endian16(1);
-
+        
         copy(str->data, (int8 *)"hello",5);
-        printf("Created ICMP packet for %s:",str->data);
+        printf("Created ICMP packet for %s:\n",str->data);
         printhex((int8 *)str, size);
-      
+         
         icmp_packet = mkicmp(echo,(int8 *)str, size);
         assert(icmp_packet);
       
         raw = evalicmp(icmp_packet);
         assert(raw);
+       
         srcip="172.20.97.99";
         dstip="8.8.8.8";
+        printf("Ping packet will echo from %s to %s:\n",srcip,dstip);
         ip_packet=mkip(L4icmp,strtoipv4(srcip),strtoipv4(dstip),0,&rnd);
         assert(ip_packet);
         ip_packet->payload=icmp_packet;
         
-        printf("Created ICMP raw data:\n");
+        printf("Created IP packet:\n");
         raw=evalip(ip_packet);
         size= sizeof(struct s_rawip)+sizeof(struct s_rawicmp)+ip_packet->payload->size;
-        show(ip_packet);
         printhex(raw,size);
 
+        printf("show IP packet information:\n");
+        show(ip_packet);
+        
+        
+        printf("Create socket.\n");
         s=setup();
         if(!s){
             printf("error\n");
@@ -451,17 +538,32 @@
         else{
              printf("socket create s=%d\n",(int)s);
         };
+        printf("send Ip packet to socket.\n");
         ret=sendip(s,ip_packet);
         printf("sendip return=%d=%s\n",ret,(ret)?"true":"false");
         
         free(icmp_packet->data);
         free(icmp_packet);
         free(ip_packet);
+        printf("Receive Ip packet from socket.\n");
         reply=recvip(s);
+        
         if(!reply){
           fprintf(stderr,"recvip() returned error");
           return -1;
         };
+        printf("received IP packet:\n");
+        raw=evalip(reply);
+        if(reply->payload){
+        size= sizeof(struct s_rawip)+sizeof(struct s_rawicmp)+reply->payload->size;
+     
+        }else{
+            size= sizeof(struct s_rawip)+sizeof(struct s_rawicmp);
+        };
+        printhex(raw,size);
+       
+    
+        printf("show reply IP packet information:\n");
         show(reply);
         free(reply);
         if(reply->payload->data)
@@ -471,21 +573,33 @@
         return 0;
     }
 
-    int main2(int argc,char *argv[]){
-       int32 s;
-       s=setup();
-       if(s)
-         printf("s=%d\n",(int)s);
-       else
-         printf("err\n");
-       close(s);
-       return 0;
+    int test2(){
+        int8 ret;
+        int8 *srcip,*dstip;
+        int8 *msg;
+        int16 msg_len;
+        int16 rnd;
+       
+        (void) rnd;
+        srand(getpid());
+        rnd=rand()%65536;
+
+        srcip="172.20.97.99";
+        dstip="8.8.8.8";
+        msg="hello";
+        msg_len=5;
+
+        ret=sendping(srcip,dstip,rnd,1,msg,5);
+        if(!ret)
+           return -1;
+        return 0;
     }
 
     int main(int argc,char *argv[]){
     
-       return main1(argc,argv);
+       return test2();
     }
     //sudo strace -f ./ping 2>&1 | grep sendto
     // sudo tcpdump -i any -n icmp and src host 10.0.3.238 -vv
     //sudo tcpdump icmp and src 10.0.3.238
+    //sudo tcpdump -i any -v icmp
