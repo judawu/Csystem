@@ -1,7 +1,8 @@
-/*sockets.c
+/*tcpserver.c
 netstat  -an | grep LISTEN 
 env - telnet localhost 8181
-curl -I localhost:8181 */
+curl -I localhost:8181
+*/
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
