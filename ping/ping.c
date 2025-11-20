@@ -234,7 +234,7 @@
     rawpkt.options[0]=0;
     rawpkt.protocol = protocol;
     rawpkt.src = pkt->src;
-    rawpkt.ttl = 250;
+    rawpkt.ttl = 64;
 
     // 2. 分配内存
     if (length_le%2) {
@@ -383,7 +383,8 @@
         icmpkind=echoreply;
     else{
         icmpkind=unassigned;
-        fprintf(stderr,"Unknow icmp packet received: %d/%d\n",rawicmp->type,rawicmp->code);
+        //return recvip(s);
+        fprintf(stderr,"Unknow icmp packet received: ICMP type is %d,ICMP code is %d\n",rawicmp->type,rawicmp->code);
         return (Ip*)0;
     };
     
@@ -415,8 +416,11 @@
  
  
    int32 setup(){
-    int32 s,one;
+     int32 s,one;
     signed int tmp;
+    struct timeval timeout;
+    timeout.tv_sec=TIMEOUT;
+    timeout.tv_usec=0;
     one=(int32)1;
     tmp =socket(AF_INET,SOCK_RAW,IPPROTO_ICMP);//IPPROTO_ICMP=1 using sudo ./ping
     if(tmp>2){
@@ -425,11 +429,10 @@
     else{
         s=(int32)0;
     };
-    tmp=setsockopt((int)s,IPPROTO_IP,IP_HDRINCL,
-    (int *)&one,sizeof(int32));
+    setsockopt((int)s,IPPROTO_IP,IP_HDRINCL,(int *)&one,sizeof(int32));
+    setsockopt((int)s,SOL_SOCKET,SO_SNDTIMEO,&timeout,sizeof(timeout));
+    setsockopt((int)s,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
   
-    if(tmp)
-     return (int32)0;
     return s;
  };
 
@@ -452,14 +455,14 @@ int8 sendping(int8 *src,int8 *dst,int16 id,int16 seq,int8 *msg,int16 msg_len){
         sendIPptr=mkip(L4icmp,strtoipv4(src),strtoipv4(dst),id,0);
         assert(sendIPptr);
         sendIPptr->payload=icmpptr;
-        show(sendIPptr);
+        //show(sendIPptr);
         s=setup();
         if(!s){
             fprintf(stderr,"socket create error\n");
             return 0;
         };
          if(!sendip(s,sendIPptr)){
-            fprintf(stderr,"send ip packet function  sendip() returne error\n");
+            fprintf(stderr,"send ip packet function sendip() returne error\n");
             return 0;
         };
         free(icmpptr->data);
@@ -467,10 +470,10 @@ int8 sendping(int8 *src,int8 *dst,int16 id,int16 seq,int8 *msg,int16 msg_len){
         free(sendIPptr);
         replyIPptr=recvip(s);   
         if(!replyIPptr){
-          fprintf(stderr,"receive ip packet function recvip() returned error");
+          fprintf(stderr,"receive ip packet function recvip() returned error\n");
           return 0;
         };
-        show(replyIPptr);
+       // show(replyIPptr);
         free(replyIPptr);
         if(replyIPptr->payload->data)
            free(replyIPptr->payload->data);
@@ -549,7 +552,7 @@ int8 sendping(int8 *src,int8 *dst,int16 id,int16 seq,int8 *msg,int16 msg_len){
         reply=recvip(s);
         
         if(!reply){
-          fprintf(stderr,"recvip() returned error");
+          fprintf(stderr,"recvip() returned error.\n");
           return -1;
         };
         printf("received IP packet:\n");
@@ -593,13 +596,61 @@ int8 sendping(int8 *src,int8 *dst,int16 id,int16 seq,int8 *msg,int16 msg_len){
         if(!ret)
            return -1;
         return 0;
-    }
+    };
+
+
+     int main1(int argc,char *argv[]){
+    
+        int8 ret,percent,sucess;
+        int8 *srcip,*dstip;
+        int8 *msg;
+        int16 seq,msg_len;
+
+        int16 rnd;
+       
+        (void) rnd;
+        if(argc <3){
+            fprintf(stderr,"Usage sudo %s <source ip> <destination ip>\n(source ip is local pubilc ip address for example:172.20.97.99,destination ip address, for example:1.1.1.1,only supoort IPv4)\n",*argv);
+            return -1;
+        }else{
+            srcip=(int8 *)argv[1];
+            dstip=(int8 *)argv[2];
+        };
+        
+        srand(getpid());
+        rnd=rand()%65536;
+       
+     
+        
+       // srcip="172.20.97.99";
+        msg="hello";
+        msg_len=5;
+        printf("Ping is running,Press CTRL-C key to abort.\nSending 8 bytes ICMP Echos from %s to %s,timeout is %d seconds.\n",
+          srcip,dstip,TIMEOUT);
+        for(seq=1,sucess=0;seq<6;seq++){
+        ret=sendping(srcip,dstip,rnd,seq,msg,msg_len);
+        if(ret){
+            printf("Ping %s Sucessed.(%d)\n",dstip,seq);
+            sucess++;
+            
+        }else{
+            printf("Ping %s Failed.(%d)\n",dstip,seq);
+            fflush(stdout);
+        } 
+    };
+        percent=(int8)((double)sucess/(double)(--seq)*100);
+
+        printf("\nSucess rate is %d%% (%d/%d) \n",percent,sucess,seq);
+        return 0;
+       
+    };
 
     int main(int argc,char *argv[]){
     
-       return test2();
-    }
+       return main1(argc,argv);
+    };
     //sudo strace -f ./ping 2>&1 | grep sendto
     // sudo tcpdump -i any -n icmp and src host 10.0.3.238 -vv
     //sudo tcpdump icmp and src 10.0.3.238
     //sudo tcpdump -i any -v icmp
+    //sudo strace -f ping 1.1.1.1 2>&1 | grep sockopt

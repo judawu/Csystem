@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
+ #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define TIMEOUT 5
 #define packed __attribute__((__packed__))
 typedef unsigned char int8;
 typedef unsigned short int int16;
@@ -120,4 +122,5 @@ void printhex(int8*, int16);
 int32 setup();
 int test1();
 int test2();
+int main1(int,char**);
 int main(int,char**);
