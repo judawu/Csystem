@@ -3,13 +3,13 @@ CFLAGS   = -O2 -Wall -std=c2x -I. -Wno-address-of-packed-member
 
 .PHONY: all clean
 
-all: clean ethernet
+all: clean ether
 
-ethernet: ethernet.o
+ether: ether.o
 	$(CC) $^ -o $@    
 
-ethernet.o: ethernet.c ethernet.h
+ether.o: ether.c ether.h
 	$(CC) $(CFLAGS) -c $< -o $@   
 
 clean:
-	rm -f *.o ethernet            
+	rm -f *.o ether            
